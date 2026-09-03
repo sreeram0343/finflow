@@ -41,6 +41,8 @@ ENV/
 *.db
 minio_data/
 postgres_data/
+local_storage/
+
 
 # Testing & Coverage
 .pytest_cache/

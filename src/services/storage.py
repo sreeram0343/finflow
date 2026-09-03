@@ -33,15 +33,18 @@ class StorageService:
             logger.warning(f"MinIO client initialization fallback to local storage: {e}")
             self.minio_client = None
 
+        self._minio_failed = False
+
     def _ensure_bucket(self) -> bool:
-        if not self.minio_client:
+        if not self.minio_client or self._minio_failed:
             return False
         try:
             if not self.minio_client.bucket_exists(self.bucket_name):
                 self.minio_client.make_bucket(self.bucket_name)
             return True
         except Exception as e:
-            logger.warning(f"Could not connect to MinIO bucket '{self.bucket_name}': {e}")
+            logger.warning(f"Could not connect to MinIO bucket '{self.bucket_name}': {e}. Disabling MinIO for this session.")
+            self._minio_failed = True
             return False
 
     async def upload_document(

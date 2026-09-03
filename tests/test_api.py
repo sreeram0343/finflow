@@ -6,11 +6,11 @@ from src.api.main import app
 
 # Test database in memory
 test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
-test_session_factory = async_sessionmaker(bind=test_engine, class_=AsyncSession, expire_on_commit=False)
+db_session_factory = async_sessionmaker(bind=test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def override_get_db_session():
-    async with test_session_factory() as session:
+    async with db_session_factory() as session:
         yield session
 
 
