@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    anthropic_workspace_id: Optional[str] = None
 
     # Langfuse Observability
     langfuse_public_key: Optional[str] = None

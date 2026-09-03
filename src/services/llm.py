@@ -56,12 +56,16 @@ class LLMService:
                 # Schema generation
                 schema = response_model.model_json_schema()
 
-                response = await litellm.acompletion(
-                    model=self.model,
-                    messages=messages,
-                    response_format={"type": "json_object", "schema": schema},
-                    temperature=0.0
-                )
+                call_kwargs = {
+                    "model": self.model,
+                    "messages": messages,
+                    "response_format": {"type": "json_object", "schema": schema},
+                    "temperature": 0.0
+                }
+                if settings.anthropic_workspace_id:
+                    call_kwargs["extra_headers"] = {"anthropic-workspace-id": settings.anthropic_workspace_id}
+
+                response = await litellm.acompletion(**call_kwargs)
 
                 content = response.choices[0].message.content
                 data = json.loads(content)
