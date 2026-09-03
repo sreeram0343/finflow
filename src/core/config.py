@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,9 +25,9 @@ class Settings(BaseSettings):
 
     # MinIO / S3 Storage
     minio_endpoint: str = "localhost:9000"
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadminpassword"
-    minio_bucket: str = "finflow-documents"
+    minio_access_key: str = "admin"
+    minio_secret_key: str = "password123"
+    minio_bucket: str = Field(default="invoices", validation_alias=AliasChoices("minio_bucket", "minio_bucket_name"))
     minio_secure: bool = False
 
     # LLM Settings
