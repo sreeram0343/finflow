@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: finflow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: finflow_user
+      POSTGRES_PASSWORD: finflow_password
+      POSTGRES_DB: finflow_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finflow_user -d finflow_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: finflow_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-create-buckets:
+    image: minio/mc:latest
+    container_name: finflow_minio_init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadminpassword;
+      /usr/bin/mc mb myminio/finflow-documents;
+      /usr/bin/mc anonymous set download myminio/finflow-documents;
+      exit 0;
+      "
+
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: finflow_langfuse
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://finflow_user:finflow_password@postgres:5432/finflow_db
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=finflow-langfuse-secret-key-12345
+      - SALT=finflow-langfuse-salt-key-12345
+
+volumes:
+  postgres_data:
+  minio_data:
