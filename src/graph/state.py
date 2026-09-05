@@ -1,47 +1,50 @@
 import operator
-from typing import TypedDict, Optional, List, Dict, Any, Annotated
-from pydantic import BaseModel
+from typing import Annotated, Any, Dict, List, Optional
+from typing_extensions import TypedDict
+from src.schemas.invoice import ExtractedInvoice
 
-from src.schemas.document import Invoice, PurchaseOrder
-from src.schemas.validation import (
-    MathVerificationResult,
-    MatchResult,
-    RiskAssessment,
-    PolicyEvaluation
-)
+class RiskFlag(TypedDict):
+    severity: str  # "LOW", "MEDIUM", "HIGH", "CRITICAL"
+    code: str      # e.g., "BANK_ACCOUNT_MISMATCH", "DUPLICATE_INVOICE"
+    description: str
+    evidence: Dict[str, Any]
 
+class DecisionLedgerEntry(TypedDict):
+    step: str
+    timestamp: str
+    agent: str
+    status: str
+    rationale: str
+    metadata: Dict[str, Any]
 
-class FinFlowState(TypedDict, total=False):
-    # Identifiers
-    document_id: str
-    thread_id: str
+class InvoiceState(TypedDict):
+    """
+    The shared state dictionary passed between all nodes in the LangGraph workflow.
+    """
+    # Raw Inputs
+    invoice_id: str
+    file_path: str
     
-    # Input payloads
-    raw_text: Optional[str]
-    file_url: Optional[str]
+    # Extracted & Verified Data
+    extracted_data: Optional[ExtractedInvoice]
+    vendor_verified: bool
+    vendor_id: Optional[str]
     
-    # Extracted data
-    invoice: Optional[Invoice]
-    purchase_order: Optional[PurchaseOrder]
+    # Reconciliation
+    po_matched: bool
+    # operator.add ensures nodes append to the list rather than overwrite it
+    matching_discrepancies: Annotated[List[str], operator.add]
     
-    # Agent Analysis Results
-    math_verification: Optional[MathVerificationResult]
-    match_result: Optional[MatchResult]
-    risk_assessment: Optional[RiskAssessment]
-    policy_evaluation: Optional[PolicyEvaluation]
+    # Risk & Policy
+    risk_score: float  # 0.0 to 1.0
+    risk_flags: Annotated[List[RiskFlag], operator.add]
+    policy_passed: bool
+    policy_failures: Annotated[List[str], operator.add]
     
-    # Routing & Gatekeeper decisions
-    decision: str  # "PENDING", "APPROVED", "REJECTED", "REQUIRES_REVIEW", "OVERRIDDEN"
-    requires_human_review: bool
-    review_task_id: Optional[str]
+    # Workflow Control
+    status: str  # "PROCESSING", "PENDING_REVIEW", "AUTO_APPROVED", "REJECTED"
+    human_decision: Optional[str]  # Populated when resuming from an interrupt()
+    human_notes: Optional[str]
     
-    # Human In The Loop inputs
-    human_action: Optional[str]  # "APPROVE", "REJECT", "OVERRIDE"
-    human_reviewer_id: Optional[str]
-    human_comments: Optional[str]
-    adjusted_amount: Optional[float]
-    
-    # Channeled list accumulators
-    audit_trail: Annotated[List[Dict[str, Any]], operator.add]
-    messages: Annotated[List[str], operator.add]
-    errors: Annotated[List[str], operator.add]
+    # Traceability
+    audit_trail: Annotated[List[DecisionLedgerEntry], operator.add]
